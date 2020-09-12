@@ -1,7 +1,21 @@
 package com.stackroute.keepnote.controller;
 
 
+import com.stackroute.keepnote.exception.UserAlreadyExistsException;
+import com.stackroute.keepnote.model.User;
 import com.stackroute.keepnote.service.UserAuthenticationService;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.SignatureAlgorithm;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RestController;
+
+import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
 
 /*
  * As in this assignment, we are working on creating RESTful web service, hence annotate
@@ -11,6 +25,7 @@ import com.stackroute.keepnote.service.UserAuthenticationService;
  * format. Starting from Spring 4 and above, we can use @RestController annotation which 
  * is equivalent to using @Controller and @ResposeBody annotation
  */
+@RestController
 public class UserAuthenticationController {
 
     /*
@@ -18,8 +33,15 @@ public class UserAuthenticationController {
 	 * autowiring) Please note that we should not create an object using the new
 	 * keyword
 	 */
+    private  UserAuthenticationService authenticationService;
+    private  ResponseEntity responseEntity;
+	private Map<String,String> map = new HashMap<>();
 
+
+
+    @Autowired
     public UserAuthenticationController(UserAuthenticationService authicationService) {
+    	this.authenticationService= authicationService;
 	}
 
 /*
@@ -34,6 +56,18 @@ public class UserAuthenticationController {
 	 */
 
 
+	@PostMapping("/api/v1/auth/register")
+	public ResponseEntity saveUser(@RequestBody User user) {
+
+		try {
+			Boolean createdUser = authenticationService.saveUser(user);
+			responseEntity = new ResponseEntity(createdUser , HttpStatus.CREATED);
+		} catch (UserAlreadyExistsException e) {
+			e.printStackTrace();
+			responseEntity = new ResponseEntity(e.getMessage() , HttpStatus.CONFLICT);
+		}
+		return responseEntity;
+	}
 
 
 	/* Define a handler method which will authenticate a user by reading the Serialized user
@@ -50,14 +84,50 @@ public class UserAuthenticationController {
 	*/
 
 
+	@PostMapping("/api/v1/auth/login")
+	public ResponseEntity userLogin(@RequestBody User user){
+
+		try {
+			String jwtToken = getToken(user.getUserId(),user.getUserPassword());
+			map.put("message" , "User successfully logged in");
+			map.put("token",jwtToken);
+		} catch (Exception e) {
+			e.printStackTrace();
+			map.put("message",e.getMessage());
+			map.put("token",null);
+			return new ResponseEntity(map, HttpStatus.UNAUTHORIZED);
+		}
+		return new ResponseEntity(map,HttpStatus.OK);
+
+
+	}
 
 
 
 
 // Generate JWT token
 	public String getToken(String username, String password) throws Exception {
-			
-        return null;
+
+		String jwtToken="";
+		if(username == null || password == null){
+			throw new Exception("Please send valid username or password");
+		}
+		//validate the user from db
+
+		User user =  authenticationService.findByUserIdAndPassword(username,password);
+		if(user==null){
+			throw new Exception("Invalid credentials");
+		}
+		else
+		{
+			jwtToken = Jwts.builder()
+					.setSubject(username)
+					.setIssuedAt(new Date())
+					.setExpiration(new Date(System.currentTimeMillis() + 300000))
+					.signWith(SignatureAlgorithm.HS256,"secretkey")
+					.compact();
+		}
+		return jwtToken;
         
         
 }

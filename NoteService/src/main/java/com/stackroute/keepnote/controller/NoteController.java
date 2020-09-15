@@ -19,6 +19,7 @@ import java.util.List;
  * is equivalent to using @Controller and @ResposeBody annotation
  */
 
+
 @RestController
 @RequestMapping("/api/v1/note")
 public class NoteController {

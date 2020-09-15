@@ -9,6 +9,7 @@ import java.util.Date;
  * Please note that this class is annotated with @Document annotation
  * @Document identifies a domain object to be persisted to MongoDB.
  *  */
+
 @Document
 public class Category {
 
